@@ -1,0 +1,4 @@
+CustomerID,Name,Email,Status
+C001,Ahmed Khan,ahmed@example.com,Active
+C002,Sara Ali,sara@example.com,Active
+C003,Usman Raza,usman@example.com,Inactive

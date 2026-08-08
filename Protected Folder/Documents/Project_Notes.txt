@@ -1,0 +1,9 @@
+Project: Internal Management System
+
+Tasks:
+1. Complete backend API
+2. Test database connection
+3. Deploy application
+4. Review security configuration
+
+Status: In Progress

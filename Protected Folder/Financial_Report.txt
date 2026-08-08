@@ -1,0 +1,8 @@
+Company Financial Report
+Year: 2026
+
+Revenue: 12500000
+Expenses: 7800000
+Profit: 4700000
+
+Report Status: Approved

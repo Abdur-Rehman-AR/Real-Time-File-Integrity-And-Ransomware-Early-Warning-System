@@ -1,0 +1,5 @@
+Contract ID: CNT-2026-001
+Client: ABC Technologies
+Start Date: 2026-01-01
+End Date: 2026-12-31
+Status: Active

@@ -1,0 +1,5 @@
+Application: EnterpriseSystem
+Environment: Production
+BackupEnabled: true
+LoggingEnabled: true
+MaxWorkers: 10
