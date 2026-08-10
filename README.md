@@ -1,25 +1,3 @@
-Step 4 — Manual Integrity Scan
-Features:
-•	Scan the folder again. 
-•	Compare with the baseline. 
-•	Detect: 
-o	New files 
-o	Modified files 
-o	Deleted files 
-Goal:
-Verify whether files are still trusted.
-________________________________________
-Step 5 — Real-Time File Watcher
-Features:
-Use WatchService.
-Detect:
-•	File Created 
-•	File Modified 
-•	File Deleted 
-Display:
-•	File name 
-•	Event 
-•	Timestamp 
 Goal:
 Monitor files continuously without wasting CPU.
 ________________________________________

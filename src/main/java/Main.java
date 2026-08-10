@@ -4,9 +4,12 @@ import java.nio.channels.FileChannel;
 import java.nio.file.*;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.stream.Stream;
 import java.util.List;
+import java.util.Map;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -133,7 +136,7 @@ public class Main {
             try {
 
                 // Create the Baseline folder if it doesn't exist
-                    Files.createDirectories(path.getParent());
+                Files.createDirectories(path.getParent());
 
                 // writeValue() convert the java data into JSON and write it somewhere.
                 // writerWithDefaultPrettyPrinter() to format with line breaks and spaces
@@ -151,9 +154,117 @@ public class Main {
 
     // Step 4
 
-    public static void hasProtectedFolderChanged(List<FileRecord> records, List<FileRecord> baselineRecords)
-    {
+    public static void hasProtectedFolderChanged(List<FileRecord> records, List<FileRecord> baselineRecords) {
+        // hashmaps that will contain file's path as key and File's object as value
 
+        Map<String, FileRecord> protectedFolderMap = new HashMap<>();
+        Map<String, FileRecord> baseLineMap = new HashMap<>();
+
+        // loop through each list of File's object to store key-value pair
+
+        for (FileRecord record : records) {
+            protectedFolderMap.put(record.filePath, record);
+        }
+
+        for (FileRecord record : baselineRecords) {
+            baseLineMap.put(record.filePath, record);
+        }
+
+        System.out.println();
+
+        // a. functionality to check either any file is new in Protected folder
+
+        for (String key : protectedFolderMap.keySet()) {
+
+            // File is new if not present in baseline but present in protected folder
+            if (!baseLineMap.containsKey(key)) {
+                System.out.println("New File: " + key);
+            }
+        }
+
+        System.out.println();
+
+        // b. functionality to check either any file is modified in Protected folder
+
+        for (String key : protectedFolderMap.keySet()) {
+
+            // file is modified if present in both folder and hash value is change in both
+            if (baseLineMap.containsKey(key)) {
+                if (!protectedFolderMap.get(key).hash.equals(baseLineMap.get(key).hash)) {
+                    System.out.println("Modified File: " + key);
+                }
+            }
+        }
+
+        System.out.println();
+
+        // c. functionality to check either any file is deleted from Protected folder
+
+        for (String key : baseLineMap.keySet()) {
+
+            // file is deleted if present in baseline but not in protected folder
+            if (!protectedFolderMap.containsKey(key)) {
+                System.out.println("Deleted File: " + key);
+            }
+        }
+    }
+
+    // Step 5
+
+    public static void startWatching(Path path) {
+        /*
+         * FileSystems is a built-in Java utility class that gives you access to the
+         * computer's file system.
+         * getDefault() method gets your OS's default file system.
+         * newWatchService() create and return a brand-new WatchService instance.
+         * It asks your computer's OS to set up a background monitor for file changes
+         * and stores that monitor inside the watchService variable.
+         */
+        try (WatchService watchService = FileSystems.getDefault().newWatchService();) {
+            // It tells Java to connect path to watcher and create alert whenever a file
+            // inside this path is created, modified, or deleted.
+
+            path.register(watchService,
+                    StandardWatchEventKinds.ENTRY_CREATE,
+                    StandardWatchEventKinds.ENTRY_MODIFY,
+                    StandardWatchEventKinds.ENTRY_DELETE);
+
+            // This line pauses your program and waits until a file change happens in the
+            // watched folder.
+
+            WatchKey key = watchService.take();
+
+            // This fetches the events that just happened.
+
+            // .pollEvents() is a method that opens key variable and extracts all the
+            // individual file events stored inside it as a list.
+            // WatchEvent<?> is a java data type for a single event.
+            // The <?> means that WatchEvent can hold any type of event data.
+
+            WatchEvent.Kind<?> kind;
+            Path fileName;
+
+            for (WatchEvent<?> event : key.pollEvents()) {
+
+                // This line simply extracts the type of action (Create, Modify or Delete) from
+                // the current event and stores it in a variable named kind so we can inspect
+                // it or print it out!
+
+                kind = event.kind();
+
+                // context() gives the relative path/name of the file that caused the event.
+                fileName = (Path) event.context();
+
+                // displaying the info
+
+                System.out.println("File name: " + fileName);
+                System.out.println("Event: " + kind);
+                System.out.println("Time: " + LocalDateTime.now());
+            }
+
+        } catch (Exception e) {
+            System.out.println("Error happened while Monitoring the file change event.");
+        }
     }
 
     public static void main(String[] args) {
@@ -195,10 +306,17 @@ public class Main {
         // new TypeReference tells java which type of object to create
 
         try {
-            List<FileRecord> baseLineRecords = objectMapper.readValue(p.toFile(), new TypeReference<List<FileRecord>>() {});
+            List<FileRecord> baseLineRecords = objectMapper.readValue(p.toFile(),
+                    new TypeReference<List<FileRecord>>() {
+                    });
             hasProtectedFolderChanged(records, baseLineRecords);
         } catch (IOException e) {
             System.out.println("Error happened while converting the json back to java objects.");
         }
+
+        // 5. Keep watching the folder and immediately tell when something changes.
+
+        // path here refers to the protected folder's path.
+        startWatching(path);
     }
 }
