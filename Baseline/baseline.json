@@ -1,0 +1,44 @@
+[
+    {
+        "filePath": "Protected Folder\\Customer_Data.csv",
+        "fileName": "Customer_Data.csv",
+        "fileSize": 150,
+        "fileLastModifiedDate": 1786177391840,
+        "hash": "2dcb38e82a5de8c4ad752fa9bc988e85acb9261a476bc5a4a55753c89af5f33f"
+    },
+    {
+        "filePath": "Protected Folder\\Documents\\Contract.txt",
+        "fileName": "Contract.txt",
+        "fileSize": 109,
+        "fileLastModifiedDate": 1786177431095,
+        "hash": "1abb208c2427b23c93e28763c2c2a29b76964b97bde123ab8211caeeb263e126"
+    },
+    {
+        "filePath": "Protected Folder\\Documents\\Project_Notes.txt",
+        "fileName": "Project_Notes.txt",
+        "fileSize": 171,
+        "fileLastModifiedDate": 1786177446732,
+        "hash": "ec849b241746c03cf3a027d90884a402273ceb9d495d0a8159c444c7f2986e0c"
+    },
+    {
+        "filePath": "Protected Folder\\Employee_Records.txt",
+        "fileName": "Employee_Records.txt",
+        "fileSize": 212,
+        "fileLastModifiedDate": 1786177363686,
+        "hash": "ea37615212df34009959238d37ff737573fcd37fca6027809565fcae088a7aa2"
+    },
+    {
+        "filePath": "Protected Folder\\Financial_Report.txt",
+        "fileName": "Financial_Report.txt",
+        "fileSize": 113,
+        "fileLastModifiedDate": 1786177378208,
+        "hash": "cace1abcaaa21d9a7ac893760b19e51f62d2e94c614f0df1aca00443a38db033"
+    },
+    {
+        "filePath": "Protected Folder\\System_Config.txt",
+        "fileName": "System_Config.txt",
+        "fileSize": 109,
+        "fileLastModifiedDate": 1786177413030,
+        "hash": "e1802e59e6a623b95f42e2ca56f3b44093d869c006b379226dbd5f7c23d4ded7"
+    }
+]
