@@ -7,6 +7,8 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.stream.Stream;
 import java.util.List;
+
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class Main {
@@ -25,7 +27,7 @@ public class Main {
 
     // Step 2
 
-    private static List<FileRecord> scanFolder(Path path) {
+    private static List<FileRecord> scanProtectedFolder(Path path) {
 
         // Creating the array list that will store the each file record object
         List<FileRecord> records = new ArrayList<>();
@@ -123,23 +125,36 @@ public class Main {
         // Creating the path object of that file
         Path path = Paths.get("Baseline", "baseline.json");
 
-        // Creates a Jackson object that knows how to convert Java objects into JSON.
-        ObjectMapper objectMapper = new ObjectMapper();
+        if (!Files.exists(path)) {
 
-        // writeValue() convert the java data into JSON and write it somewhere.
-        // writerWithDefaultPrettyPrinter() to format with line breaks and spaces
-        try {
-            objectMapper.writerWithDefaultPrettyPrinter().writeValue(path.toFile(), records);
-            System.out.println("Baseline successfully saved to " + path.toAbsolutePath());
-        } catch (IOException e) {
-            System.out.println(e.getMessage());
-            System.out.println("An error happened while accessing the file of BaseLine.");
-            System.out.println("Exiting ...");
-            System.exit(1);
+            // Creates a Jackson object that knows how to convert Java objects into JSON.
+            ObjectMapper objectMapper = new ObjectMapper();
+
+            try {
+
+                // Create the Baseline folder if it doesn't exist
+                    Files.createDirectories(path.getParent());
+
+                // writeValue() convert the java data into JSON and write it somewhere.
+                // writerWithDefaultPrettyPrinter() to format with line breaks and spaces
+
+                objectMapper.writerWithDefaultPrettyPrinter().writeValue(path.toFile(), records);
+                System.out.println("Baseline successfully saved to " + path.toAbsolutePath());
+            } catch (IOException e) {
+                System.out.println(e.getMessage());
+                System.out.println("An error happened while accessing the file of BaseLine.");
+                System.out.println("Exiting ...");
+                System.exit(1);
+            }
         }
     }
 
     // Step 4
+
+    public static void hasProtectedFolderChanged(List<FileRecord> records, List<FileRecord> baselineRecords)
+    {
+
+    }
 
     public static void main(String[] args) {
 
@@ -160,10 +175,10 @@ public class Main {
             System.out.println("Protected Folder is Ready.");
         }
 
-        // 2. Scan all files and subfolders. i.e, Walk through all the files and list
-        // each one's information and store inside one variable
+        // 2. Scan all files and subfolders of protected folder and list each file's
+        // information and store inside object
 
-        List<FileRecord> records = scanFolder(path);
+        List<FileRecord> records = scanProtectedFolder(path);
 
         // 3. Put all file's information inside one file of baseline
 
@@ -171,7 +186,19 @@ public class Main {
 
         // 4. Manual Integrity Scan
 
-        
+        Path p = Paths.get("Baseline", "baseline.json");
 
+        // Converting JSON file (baseline.json) back into java objects
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        // readValue() method reads JSON and converts it into Java objects.
+        // new TypeReference tells java which type of object to create
+
+        try {
+            List<FileRecord> baseLineRecords = objectMapper.readValue(p.toFile(), new TypeReference<List<FileRecord>>() {});
+            hasProtectedFolderChanged(records, baseLineRecords);
+        } catch (IOException e) {
+            System.out.println("Error happened while converting the json back to java objects.");
+        }
     }
 }
