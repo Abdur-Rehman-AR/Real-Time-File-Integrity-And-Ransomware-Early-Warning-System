@@ -47,6 +47,16 @@ public class Main {
             return null;
     }
 
+    private static Path selectBackupFolder() {
+
+        Path path = Paths.get("Backup");
+
+        if (Files.exists(path) && Files.isDirectory(path))
+            return path;
+        else
+            return null;
+    }
+
     // Step 2
 
     private static List<FileRecord> scanProtectedFolder(Path path) {
@@ -232,21 +242,32 @@ public class Main {
 
     private static String calculateHash(Path path) {
 
+        // Creating a pipeline till file that we need to read
         try (FileChannel channel = FileChannel.open(path, StandardOpenOption.READ)) {
 
+            // Buffer that will use to contain the bytes of the file
             ByteBuffer buffer = ByteBuffer.allocate(1024);
+
+            // MessageDigest class calculates hash values, this MessageDigest object uses
+            // the SHA-256 algorithm.
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
 
+            // read the bytes from file and put them into the buffer
             while (channel.read(buffer) > 0) {
                 buffer.flip();
+
+                // Give the bytes currently inside buffer to the SHA-256 calculator.
                 digest.update(buffer);
                 buffer.clear();
             }
 
+            // hash came out in the form of bytes
             byte[] hash = digest.digest();
 
+            // using StringBuilder bcz it updates itself every time as modifies when
             StringBuilder result = new StringBuilder();
 
+            // Converting into hexadecimal
             for (byte b : hash) {
                 result.append(String.format("%02x", b));
             }
@@ -260,7 +281,7 @@ public class Main {
 
     // Step 5
 
-    public static void startWatching(Path path) {
+    public static void startWatching(Path path, List<FileRecord> baseLineRecords, Path backupFolderPath) {
 
         // Creating a thread to run the code in background
         Thread thread = new Thread(
@@ -305,9 +326,27 @@ public class Main {
                                 String status;
                                 if (approvedFiles.contains(filepath)) {
                                     status = "Authorized";
+                                    String newHash = calculateHash(filepath);
+
+                                    // Update the Baseline Hash
+                                    for (FileRecord record : baseLineRecords) {
+                                        if (Paths.get(record.filePath).toAbsolutePath().normalize().equals(filepath)) {
+                                            record.hash = newHash;
+                                            break;
+                                        }
+                                    }
+
+                                    // Update the Backup file content as well
+                                    Path backupFilePath = backupFolderPath.resolve(filepath.getFileName());
+                                    Files.copy(filepath, backupFilePath, StandardCopyOption.REPLACE_EXISTING);
+                                    System.out.println("Backup copy updated for: " + filepath.getFileName());
+
                                     approvedFiles.remove(filepath);
-                                } else
+                                } else {
                                     status = "Unauthorized";
+                                    System.out.println(
+                                            "ALERT: Tampering detected on " + fileName + ". Restoring from Backup...");
+                                }
 
                                 // displaying the info
                                 System.out.println("File name: " + fileName);
@@ -332,6 +371,33 @@ public class Main {
 
         // It will start running the thread
         thread.start();
+    }
+
+    // 1.1 Backup folder initialization
+
+    public static void initializeBackupFolder(Path protectedFolder, Path backupFolder) {
+        try {
+
+            // Copy each file from Protected Folder to Backup Folder
+
+            // DirectoryStream lets you go through the items inside a folder one by one.
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(protectedFolder)) {
+                for (Path file : stream) {
+                    if (Files.isRegularFile(file)) {
+
+                        // Creating the name of the path
+                        Path newPath = backupFolder.resolve(file.getFileName());
+
+                        // REPLACE_EXISTING means if destination already has the file, overwrite it.
+                        Files.copy(file, newPath, StandardCopyOption.REPLACE_EXISTING);
+                    }
+                }
+            }
+            System.out.println("Backup initialized successfully.");
+
+        } catch (IOException e) {
+            System.out.println("Error initializing backup: " + e.getMessage());
+        }
     }
 
     // Step 6
@@ -409,6 +475,12 @@ public class Main {
         }
         System.out.println();
 
+        // backup folder initialization
+
+        Path backupFolderPath = selectBackupFolder();
+        if (backupFolderPath != null)
+            initializeBackupFolder(path, backupFolderPath);
+
         // 2. Scan all files and subfolders of protected folder and list each file's
         // information and store inside object
 
@@ -427,13 +499,18 @@ public class Main {
         // Converting JSON file (baseline.json) back into java objects
         ObjectMapper objectMapper = new ObjectMapper();
 
-        // readValue() method reads JSON and converts it into Java objects.
-        // new TypeReference tells java which type of object to create
+        // A list that can store multiple FileRecord objects
+        List<FileRecord> baseLineRecords = null;
 
         try {
-            List<FileRecord> baseLineRecords = objectMapper.readValue(p.toFile(),
-                    new TypeReference<List<FileRecord>>() {
+
+            // readValue() reads JSON and converts it into Java objects.
+            baseLineRecords = objectMapper.readValue(
+
+                    // new TypeReference tells java which type of object to create
+                    p.toFile(), new TypeReference<List<FileRecord>>() {
                     });
+
             hasProtectedFolderChanged(records, baseLineRecords);
         } catch (IOException e) {
             System.out.println("Error happened while converting the json back to java objects.");
@@ -442,7 +519,7 @@ public class Main {
 
         // 5. Keep watching the folder and immediately tell when something changes.
 
-        startWatching(path);
+        startWatching(path, baseLineRecords, backupFolderPath);
         System.out.println();
 
         // 6. Modify a file and check either that change is authorized or not
