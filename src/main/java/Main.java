@@ -27,6 +27,8 @@ import javax.swing.JTextArea;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.awt.BorderLayout;
+
 public class Main {
 
     // Step 6 - Making a class level list to store files that are authorized to be
@@ -226,6 +228,36 @@ public class Main {
         }
     }
 
+    // Method that will calculate the SHA-256 for the files
+
+    private static String calculateHash(Path path) {
+
+        try (FileChannel channel = FileChannel.open(path, StandardOpenOption.READ)) {
+
+            ByteBuffer buffer = ByteBuffer.allocate(1024);
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+
+            while (channel.read(buffer) > 0) {
+                buffer.flip();
+                digest.update(buffer);
+                buffer.clear();
+            }
+
+            byte[] hash = digest.digest();
+
+            StringBuilder result = new StringBuilder();
+
+            for (byte b : hash) {
+                result.append(String.format("%02x", b));
+            }
+
+            return result.toString();
+
+        } catch (IOException | NoSuchAlgorithmException e) {
+            return null;
+        }
+    }
+
     // Step 5
 
     public static void startWatching(Path path) {
@@ -267,10 +299,21 @@ public class Main {
                                 // context() gives the relative path/name of the file that caused the event.
                                 fileName = (Path) event.context();
 
+                                // Getting the full path of the file
+                                Path filepath = path.resolve(fileName).toAbsolutePath().normalize();
+
+                                String status;
+                                if (approvedFiles.contains(filepath)) {
+                                    status = "Authorized";
+                                    approvedFiles.remove(filepath);
+                                } else
+                                    status = "Unauthorized";
+
                                 // displaying the info
                                 System.out.println("File name: " + fileName);
                                 System.out.println("Event: " + kind);
                                 System.out.println("Time: " + LocalDateTime.now());
+                                System.out.println("Change: " + status);
                             }
 
                             // It tells java that i finished processing the events. You can watch for
@@ -295,18 +338,36 @@ public class Main {
 
     public static void ModifyFile(Path path, Path protectedFolder) {
 
+        // Checking if user eneterd path is from protected folder or not
         if (!path.startsWith(protectedFolder)) {
             System.out.println("Protected Folder doesn't contain this file: " + path.getFileName());
             return;
         }
 
         try {
+
+            // Create a window called "File Editor".
             JFrame frame = new JFrame("File Editor");
 
+            // Read the file and put its content inside an editable text box.
             JTextArea textArea = new JTextArea(Files.readString(path));
 
+            // Create a button labeled "Save".
             JButton saveButton = new JButton("Save");
 
+            // Put the editable text area in the center with scrolling.
+            frame.add(new JScrollPane(textArea), BorderLayout.CENTER);
+
+            // Adds the Save button to the bottom of the window.
+            frame.add(saveButton, BorderLayout.SOUTH);
+
+            // Sets the window size
+            frame.setSize(600, 400);
+
+            // Makes the window visible to the user
+            frame.setVisible(true);
+
+            // When the user clicks the Save button, execute this code.
             saveButton.addActionListener(e -> {
                 try {
                     // Mark this file as authorized before modifying it
@@ -319,14 +380,9 @@ public class Main {
 
                 } catch (IOException ex) {
                     System.out.println("Error happened while saving the file.");
+                    approvedFiles.remove(path);
                 }
             });
-
-            frame.add(new JScrollPane(textArea), BorderLayout.CENTER);
-            frame.add(saveButton, BorderLayout.SOUTH);
-
-            frame.setSize(600, 400);
-            frame.setVisible(true);
 
         } catch (IOException e) {
             System.out.println("Error happened while reading the file content.");
@@ -418,7 +474,7 @@ public class Main {
             System.exit(1);
         }
 
-        ModifyFile(Path.of(filePath), path);
+        ModifyFile(Path.of(filePath).normalize(), path.normalize());
         System.out.println();
     }
 }
