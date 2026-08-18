@@ -8,6 +8,22 @@ o	Authorized Change
 o	Unauthorized Change 
 Goal:
 Verify every file change immediately.
+
+    // 3. Remove from approvedFiles
+    approvedFiles.remove(filepath);
+
+} else {
+    // UNAUTHORIZED: Restore tampered file from Backup
+    Path backupFilePath = backupFolder.resolve(filepath.getFileName());
+    try {
+        approvedFiles.add(filepath); // Prevent infinite loop during rollback write
+        Files.copy(backupFilePath, filepath, StandardCopyOption.REPLACE_EXISTING);
+        System.out.println("ALERT: Unauthorized edit detected! Restored from Backup.");
+    } catch (IOException e) {
+        approvedFiles.remove(filepath);
+        System.out.println("Failed to perform rollback: " + e.getMessage());
+    }
+}
 ________________________________________
 Step 7 — Tamper-Evident Audit Log
 Features:
