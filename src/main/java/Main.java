@@ -212,59 +212,66 @@ public class Main {
     // Step 5
 
     public static void startWatching(Path path) {
-        /*
-         * FileSystems is a built-in Java utility class that gives you access to the
-         * computer's file system.
-         * getDefault() method gets your OS's default file system.
-         * newWatchService() create and return a brand-new WatchService instance.
-         * It asks your computer's OS to set up a background monitor for file changes
-         * and stores that monitor inside the watchService variable.
-         */
-        try (WatchService watchService = FileSystems.getDefault().newWatchService();) {
-            // It tells Java to connect path to watcher and create alert whenever a file
-            // inside this path is created, modified, or deleted.
 
-            path.register(watchService,
-                    StandardWatchEventKinds.ENTRY_CREATE,
-                    StandardWatchEventKinds.ENTRY_MODIFY,
-                    StandardWatchEventKinds.ENTRY_DELETE);
+        // Creating a thread to run the code in background
+        Thread thread = new Thread(
 
-            // This line pauses your program and waits until a file change happens in the
-            // watched folder.
+                // Thread constructor requires a Runnable object. When you call thread.start(),
+                // Java looks inside that Runnable object and executes its .run() method.
+                () -> {
 
-            WatchKey key = watchService.take();
+                    // FileSystems gives you access to the computer's file system. getDefault() gets
+                    // your OS's default file system.
+                    try (WatchService watchService = FileSystems.getDefault().newWatchService()) {
 
-            // This fetches the events that just happened.
+                        // It tells Java to connect path to watcher and create alert whenever a file
+                        // inside this path is created, modified, or deleted.
+                        path.register(
+                                watchService,
+                                StandardWatchEventKinds.ENTRY_CREATE,
+                                StandardWatchEventKinds.ENTRY_MODIFY,
+                                StandardWatchEventKinds.ENTRY_DELETE);
 
-            // .pollEvents() is a method that opens key variable and extracts all the
-            // individual file events stored inside it as a list.
-            // WatchEvent<?> is a java data type for a single event.
-            // The <?> means that WatchEvent can hold any type of event data.
+                        while (true) {
 
-            WatchEvent.Kind<?> kind;
-            Path fileName;
+                            // take() pauses your program and waits for a file change in watched folder.
+                            WatchKey key = watchService.take();
 
-            for (WatchEvent<?> event : key.pollEvents()) {
+                            // WatchEvent<?> is a java data type for a single event.
+                            WatchEvent.Kind<?> kind;
+                            Path fileName;
 
-                // This line simply extracts the type of action (Create, Modify or Delete) from
-                // the current event and stores it in a variable named kind so we can inspect
-                // it or print it out!
+                            // pollEvents() opens key variable and extracts all the individual file events
+                            // stored inside it as a list (key).
+                            for (WatchEvent<?> event : key.pollEvents()) {
 
-                kind = event.kind();
+                                kind = event.kind();
 
-                // context() gives the relative path/name of the file that caused the event.
-                fileName = (Path) event.context();
+                                // context() gives the relative path/name of the file that caused the event.
+                                fileName = (Path) event.context();
 
-                // displaying the info
+                                // displaying the info
+                                System.out.println("File name: " + fileName);
+                                System.out.println("Event: " + kind);
+                                System.out.println("Time: " + LocalDateTime.now());
+                            }
 
-                System.out.println("File name: " + fileName);
-                System.out.println("Event: " + kind);
-                System.out.println("Time: " + LocalDateTime.now());
-            }
+                            // It tells java that i finished processing the events. You can watch for
+                            // new events again.
+                            key.reset();
+                        }
 
-        } catch (Exception e) {
-            System.out.println("Error happened while Monitoring the file change event.");
-        }
+                    } catch (InterruptedException e) {
+                        // Mark the currently running thread as interrupted.
+                        Thread.currentThread().interrupt();
+
+                    } catch (IOException e) {
+                        System.out.println("Error while monitoring folder: " + e.getMessage());
+                    }
+                });
+
+        // It will start running the thread
+        thread.start();
     }
 
     public static void main(String[] args) {
