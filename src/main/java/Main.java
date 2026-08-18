@@ -1,20 +1,37 @@
+import java.io.File;
 import java.io.IOException;
+
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.*;
+
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+
 import java.time.LocalDateTime;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.stream.Stream;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
+import javax.swing.JButton;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class Main {
+
+    // Step 6 - Making a class level list to store files that are authorized to be
+    // changed. ConcurrentHashMap.newKeySet() provides the thread safety.
+    private static Set<Path> approvedFiles = ConcurrentHashMap.newKeySet();
 
     // Step 1
 
@@ -274,6 +291,48 @@ public class Main {
         thread.start();
     }
 
+    // Step 6
+
+    public static void ModifyFile(Path path, Path protectedFolder) {
+
+        if (!path.startsWith(protectedFolder)) {
+            System.out.println("Protected Folder doesn't contain this file: " + path.getFileName());
+            return;
+        }
+
+        try {
+            JFrame frame = new JFrame("File Editor");
+
+            JTextArea textArea = new JTextArea(Files.readString(path));
+
+            JButton saveButton = new JButton("Save");
+
+            saveButton.addActionListener(e -> {
+                try {
+                    // Mark this file as authorized before modifying it
+                    approvedFiles.add(path);
+
+                    // Save the edited content
+                    Files.writeString(path, textArea.getText());
+
+                    System.out.println("File saved successfully.");
+
+                } catch (IOException ex) {
+                    System.out.println("Error happened while saving the file.");
+                }
+            });
+
+            frame.add(new JScrollPane(textArea), BorderLayout.CENTER);
+            frame.add(saveButton, BorderLayout.SOUTH);
+
+            frame.setSize(600, 400);
+            frame.setVisible(true);
+
+        } catch (IOException e) {
+            System.out.println("Error happened while reading the file content.");
+        }
+    }
+
     public static void main(String[] args) {
 
         System.out.println();
@@ -292,15 +351,18 @@ public class Main {
         } else {
             System.out.println("Protected Folder is Ready.");
         }
+        System.out.println();
 
         // 2. Scan all files and subfolders of protected folder and list each file's
         // information and store inside object
 
         List<FileRecord> records = scanProtectedFolder(path);
+        System.out.println();
 
         // 3. Put all file's information inside one file of baseline
 
         putInfoInBaseline(records);
+        System.out.println();
 
         // 4. Manual Integrity Scan
 
@@ -320,10 +382,43 @@ public class Main {
         } catch (IOException e) {
             System.out.println("Error happened while converting the json back to java objects.");
         }
+        System.out.println();
 
         // 5. Keep watching the folder and immediately tell when something changes.
 
-        // path here refers to the protected folder's path.
         startWatching(path);
+        System.out.println();
+
+        // 6. Modify a file and check either that change is authorized or not
+
+        // Let the user choose the file to be modified
+
+        String filePath = null;
+
+        // File Chooser object that opens the system's File Explorer.
+        JFileChooser fileChooser = new JFileChooser();
+
+        // showOpenDialog() Opens the File Explorer so the user can choose a file, and
+        // null means no parent window. So the dialog opens independently.
+        int result = fileChooser.showOpenDialog(null);
+
+        // JFileChooser.APPROVE_OPTION is an int constant.
+        if (result == JFileChooser.APPROVE_OPTION) {
+
+            // getSelectedFile() gives the address (File object) of the selected file
+            File selectedFile = fileChooser.getSelectedFile();
+
+            filePath = selectedFile.getAbsolutePath();
+            System.out.println("Selected File: " + selectedFile.getName());
+            System.out.println("File Path: " + filePath);
+
+        } else {
+            System.out.println("No file selected.");
+            System.out.println("Exiting ...");
+            System.exit(1);
+        }
+
+        ModifyFile(Path.of(filePath), path);
+        System.out.println();
     }
 }

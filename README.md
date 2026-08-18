@@ -92,16 +92,3 @@ Examples:
 •	Whitelist 
 Goal:
 Make the system reusable.
-________________________________________
-Step 14 — Documentation
-Prepare:
-•	README 
-•	Problem Statement 
-•	Objectives 
-•	Features 
-•	Technologies 
-•	Architecture 
-•	Screenshots 
-•	Demo video 
-Goal:
-Make the project professional for GitHub and recruiters.
