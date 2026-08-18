@@ -1,6 +1,3 @@
-Goal:
-Monitor files continuously without wasting CPU.
-________________________________________
 Step 6 — Live Integrity Verification
 Features:
 Whenever WatchService detects a change:
