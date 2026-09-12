@@ -1,0 +1,11 @@
+Employee ID: EMP001
+Name: Ali Hassan
+Department: Software Engineering
+Position: Backend Developer
+Status: Active
+
+Employee ID: EMP002
+Name: Sara Khan
+Department: Finance
+Position: Financial Analyst
+Status: Active
