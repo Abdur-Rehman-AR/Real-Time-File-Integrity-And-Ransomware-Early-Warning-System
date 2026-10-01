@@ -21,6 +21,14 @@ public class FileWatcher {
     // changed. ConcurrentHashMap.newKeySet() provides the thread safety.
     public static Set<Path> approvedFiles = ConcurrentHashMap.newKeySet();
 
+    // List of files that the system itself deleted intentionally, so when
+    // WatchService reports their ENTRY_DELETE, we can ignore that event.
+    public static Set<Path> systemDeletedFiles = ConcurrentHashMap.newKeySet();
+
+    // List of files that system intentionally restored. It will tell the watcher
+    // that this CREATE came from our restore, not from a user creating a new file.
+    public static Set<Path> systemRestoredFiles = ConcurrentHashMap.newKeySet();
+
     // If the OS sends multiple events very quickly for the same file, we can check
     // the time and ignore duplicate events occurring within 500 ms.
 
@@ -88,7 +96,7 @@ public class FileWatcher {
                                 lastProcessedTime.put(protectedFilePath, currentTime);
 
                                 // variable to show change authorized or unauthorized
-                                String status;
+                                String status = "Unknown";
                                 // Take the Backup folder path + take the name of the protected file and then
                                 // combine them
                                 Path backupFilePath = backupFolderPath.resolve(protectedFilePath.getFileName());
@@ -98,7 +106,11 @@ public class FileWatcher {
                                 // First of all what happens if we do creation of a file in the protected folder
                                 if (kind == StandardWatchEventKinds.ENTRY_CREATE) {
 
-                                    if (approvedFiles.contains(protectedFilePath)) {
+                                    if (systemRestoredFiles.remove(protectedFilePath)) {
+                                        status = "System Restore";
+                                        System.out.println(
+                                                "Ignoring CREATE event caused by file restoration: " + fileName);
+                                    } else if (approvedFiles.contains(protectedFilePath)) {
                                         status = "Authorized";
                                         System.out.println("SUCCESS: Authorized file created: " + fileName);
 
@@ -123,9 +135,13 @@ public class FileWatcher {
                                                 + ". Deleting file...");
 
                                         try {
-                                            // Delete the unauthorized intruder file
+                                            // Adding the file in list, so that delete event can know it is intentional
+                                            // deleteion
+                                            systemDeletedFiles.add(protectedFilePath);
+                                            // Delete the unauthorized file
                                             Files.deleteIfExists(protectedFilePath);
                                         } catch (IOException e) {
+                                            systemDeletedFiles.remove(protectedFilePath);
                                             System.out.println("Failed to delete unauthorized file: " + e.getMessage());
                                         }
                                     }
@@ -171,7 +187,48 @@ public class FileWatcher {
 
                                 } else if (kind == StandardWatchEventKinds.ENTRY_DELETE) {
 
-                                    // Optional: Handle deletion (restore file from backup if unauthorized)
+                                    if (systemDeletedFiles.remove(protectedFilePath)) {
+                                        status = "System Cleanup";
+                                        System.out
+                                                .println("Ignoring DELETE event caused by system cleanup: " + fileName);
+                                    }
+                                    // Authorized deletion
+                                    else if (approvedFiles.contains(protectedFilePath)) {
+
+                                        status = "Authorized";
+
+                                        System.out.println("SUCCESS: Authorized file deleted: " + fileName);
+
+                                        // Remove the file from the baseline
+                                        baseLineRecords.removeIf(record -> Paths.get(record.filePath)
+                                                .toAbsolutePath().normalize().equals(protectedFilePath));
+
+                                        // Save the updated baseline
+                                        BaselineManager.putInfoInBaseline(baseLineRecords);
+
+                                        // Delete the backup copy
+                                        try {
+                                            Files.deleteIfExists(backupFilePath);
+                                            System.out.println("Backup copy deleted: " + fileName);
+                                        } catch (IOException e) {
+                                            System.out.println("Failed to delete backup: " + e.getMessage());
+                                        }
+
+                                        // Remove temporary approval
+                                        approvedFiles.remove(protectedFilePath);
+
+                                    } else {
+                                        // Unauthorized deletion
+                                        status = "Unauthorized";
+
+                                        System.out.println("ALERT: Unauthorized deletion detected on " + fileName
+                                                + ". Restoring from Backup...");
+                                        // Adding file so that create event can see this creation is done by system
+                                        // itself
+                                        systemRestoredFiles.add(protectedFilePath);
+                                        // Restore the deleted file from backup
+                                        BackupManager.restoreBackup(protectedFilePath, backupFilePath, approvedFiles);
+                                    }
                                 }
 
                                 // displaying the info
