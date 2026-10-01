@@ -93,6 +93,14 @@ public class Main {
 
             Path newFilePath = selectedFile.toPath().toAbsolutePath().normalize();
 
+            // Checking either user is creating a file in protected folder or any other folder
+            Path protectedFolderPath = protectedFolder.toAbsolutePath().normalize();
+
+            if (!newFilePath.startsWith(protectedFolderPath)) {
+                System.out.println("You can only create files inside the Protected Folder.");
+                return;
+            }
+
             // Mark the file as authorized BEFORE creating it
             FileWatcher.approvedFiles.add(newFilePath);
 
