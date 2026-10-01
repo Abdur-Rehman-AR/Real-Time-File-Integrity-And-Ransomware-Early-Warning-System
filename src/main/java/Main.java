@@ -93,7 +93,8 @@ public class Main {
 
             Path newFilePath = selectedFile.toPath().toAbsolutePath().normalize();
 
-            // Checking either user is creating a file in protected folder or any other folder
+            // Checking either user is creating a file in protected folder or any other
+            // folder
             Path protectedFolderPath = protectedFolder.toAbsolutePath().normalize();
 
             if (!newFilePath.startsWith(protectedFolderPath)) {
@@ -116,6 +117,57 @@ public class Main {
 
         } else {
             System.out.println("File creation cancelled.");
+        }
+    }
+
+    // Step 8
+
+    public static void deleteFile(Path protectedFolder) {
+
+        // Create a file chooser that starts inside the Protected Folder.
+        JFileChooser fileChooser = new JFileChooser(protectedFolder.toFile());
+
+        // Set the window title.
+        fileChooser.setDialogTitle("Delete File");
+
+        // Open the file chooser.
+        int result = fileChooser.showOpenDialog(null);
+
+        // If the user selected a file and clicked Open.
+        if (result == JFileChooser.APPROVE_OPTION) {
+
+            // Get the selected file.
+            File selectedFile = fileChooser.getSelectedFile();
+
+            Path filePath = selectedFile.toPath()
+                    .toAbsolutePath()
+                    .normalize();
+
+            Path protectedFolderPath = protectedFolder
+                    .toAbsolutePath()
+                    .normalize();
+
+            // Make sure the file is inside the Protected Folder.
+            if (!filePath.startsWith(protectedFolderPath)) {
+                System.out.println("You can only delete files inside the Protected Folder.");
+                return;
+            }
+
+            // Mark the deletion as authorized BEFORE deleting.
+            FileWatcher.approvedFiles.add(filePath);
+
+            try {
+                // Actually delete the file.
+                Files.delete(filePath);
+                System.out.println("File deleted successfully: " + filePath.getFileName());
+            } catch (IOException e) {
+
+                // Remove approval if deletion failed.
+                FileWatcher.approvedFiles.remove(filePath);
+                System.out.println("Error deleting file: " + e.getMessage());
+            }
+        } else {
+            System.out.println("File deletion cancelled.");
         }
     }
 
@@ -221,5 +273,8 @@ public class Main {
         // 7. New file creation logic
 
         createFile(path);
+
+        // 8. Delete a File
+        deleteFile(path);
     }
 }
