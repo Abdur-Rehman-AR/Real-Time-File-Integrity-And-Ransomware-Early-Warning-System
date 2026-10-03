@@ -195,8 +195,15 @@ public class FileWatcher {
                                         System.out.println("ALERT: Tampering detected on " + fileName
                                                 + ". Restoring from Backup...");
 
+                                        systemRestoredFiles.add(protectedFilePath);
+
                                         // Restore the trusted backup copy
-                                        BackupManager.restoreBackup(protectedFilePath, backupFilePath, approvedFiles);
+                                        BackupManager.restoreBackup(protectedFilePath, backupFilePath);
+
+                                        scheduler.schedule(
+                                                () -> systemRestoredFiles.remove(protectedFilePath),
+                                                2,
+                                                TimeUnit.SECONDS);
                                     }
 
                                 } else if (kind == StandardWatchEventKinds.ENTRY_DELETE) {
@@ -241,7 +248,7 @@ public class FileWatcher {
                                         // itself
                                         systemRestoredFiles.add(protectedFilePath);
                                         // Restore the deleted file from backup
-                                        BackupManager.restoreBackup(protectedFilePath, backupFilePath, approvedFiles);
+                                        BackupManager.restoreBackup(protectedFilePath, backupFilePath);
 
                                         // It tells your background helper thread: "Wait 2 seconds and then remove this
                                         // file path from the systemRestoredFiles list.
