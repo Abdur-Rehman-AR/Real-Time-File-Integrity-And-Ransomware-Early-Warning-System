@@ -12,6 +12,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 // This class FileWatcher continuously monitor protected folder in the background for 
 // real-time file changes and handle authorization.
@@ -28,6 +31,11 @@ public class FileWatcher {
     // List of files that system intentionally restored. It will tell the watcher
     // that this CREATE came from our restore, not from a user creating a new file.
     public static Set<Path> systemRestoredFiles = ConcurrentHashMap.newKeySet();
+
+    // It keeps a single helper thread ready in the background. When you tell it to
+    // run a task after a delay like 500 ms, that background thread waits for the
+    // timer to finish, runs your task, and then goes back to waiting.
+    private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
     // If the OS sends multiple events very quickly for the same file, we can check
     // the time and ignore duplicate events occurring within 500 ms.
@@ -106,7 +114,7 @@ public class FileWatcher {
                                 // First of all what happens if we do creation of a file in the protected folder
                                 if (kind == StandardWatchEventKinds.ENTRY_CREATE) {
 
-                                    if (systemRestoredFiles.remove(protectedFilePath)) {
+                                    if (systemRestoredFiles.contains(protectedFilePath)) {
                                         status = "System Restore";
                                         System.out.println(
                                                 "Ignoring CREATE event caused by file restoration: " + fileName);
@@ -148,8 +156,14 @@ public class FileWatcher {
 
                                 } else if (kind == StandardWatchEventKinds.ENTRY_MODIFY) {
 
+                                    if (systemRestoredFiles.contains(protectedFilePath)) {
+
+                                        status = "System Restore";
+                                        System.out.println(
+                                                "Ignoring MODIFY event caused by file restoration: " + fileName);
+                                    }
                                     // If Authorized modification then:
-                                    if (approvedFiles.contains(protectedFilePath)) {
+                                    else if (approvedFiles.contains(protectedFilePath)) {
 
                                         status = "Authorized";
 
@@ -228,6 +242,12 @@ public class FileWatcher {
                                         systemRestoredFiles.add(protectedFilePath);
                                         // Restore the deleted file from backup
                                         BackupManager.restoreBackup(protectedFilePath, backupFilePath, approvedFiles);
+
+                                        // It tells your background helper thread: "Wait 2 seconds and then remove this
+                                        // file path from the systemRestoredFiles list.
+                                        scheduler.schedule(
+                                                () -> systemRestoredFiles.remove(protectedFilePath), 2,
+                                                TimeUnit.SECONDS);
                                     }
                                 }
 
