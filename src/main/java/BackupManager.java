@@ -37,16 +37,11 @@ public class BackupManager {
 
     // Method that will rewrite the protected folder file as copied from the backup
     // folder file when change is unauthorized
-    public static void restoreBackup(Path protectedFilePath, Path backupFilePath, Set<Path> approvedFiles) {
+    public static void restoreBackup(Path protectedFilePath, Path backupFilePath) {
         try {
-            // Add to approvedFiles temporarily to prevent an infinite loop when rewriting
-            // the clean file
-            approvedFiles.add(protectedFilePath);
-            Files.copy(backupFilePath, protectedFilePath,
-                    StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(backupFilePath, protectedFilePath, StandardCopyOption.REPLACE_EXISTING);
             System.out.println("SUCCESS: Restored " + protectedFilePath.getFileName() + " from Backup.");
         } catch (IOException e) {
-            approvedFiles.remove(protectedFilePath);
             System.out.println("Failed to restore file: " + e.getMessage());
         }
     }
