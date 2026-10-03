@@ -156,6 +156,8 @@ public class FileWatcher {
 
                                 } else if (kind == StandardWatchEventKinds.ENTRY_MODIFY) {
 
+                                    // It ignores the file-change event that our own program creates while restoring
+                                    // a file.
                                     if (systemRestoredFiles.contains(protectedFilePath)) {
 
                                         status = "System Restore";
@@ -170,42 +172,45 @@ public class FileWatcher {
                                         // Calculate the new hash
                                         String newHash = IntegrityChecker.calculateHash(protectedFilePath);
 
-                                        // Find the file in the baseline and update its hash
+                                        // Go through all the files stored in the baseline and find the record for the
+                                        // file that was just changed.
                                         for (FileRecord record : baseLineRecords) {
 
+                                            // It is checking does this baseline record belong to the file that
+                                            // WatchService just detected.
                                             if (Paths.get(record.filePath).toAbsolutePath().normalize()
                                                     .equals(protectedFilePath)) {
-                                                record.hash = newHash;
+
+                                                String oldHash = record.hash;
+
+                                                // Check either file changed or not
+                                                if (newHash.equals(oldHash)) {
+                                                    status = "No Content Change";
+                                                    System.out.println("File content is unchanged: " + fileName);
+
+                                                } else if (approvedFiles.contains(protectedFilePath)) {
+
+                                                    status = "Authorized";
+                                                    record.hash = newHash;
+                                                    BaselineManager.putInfoInBaseline(baseLineRecords);
+                                                    BackupManager.updateBackup(protectedFilePath, backupFilePath,
+                                                            approvedFiles);
+                                                } else {
+                                                    status = "Unauthorized";
+                                                    System.out.println("ALERT: Tampering detected on " + fileName
+                                                            + ". Restoring from Backup...");
+                                                    systemRestoredFiles.add(protectedFilePath);
+                                                    BackupManager.restoreBackup(protectedFilePath, backupFilePath);
+
+                                                    scheduler.schedule(
+                                                            () -> systemRestoredFiles.remove(protectedFilePath),
+                                                            2,
+                                                            TimeUnit.SECONDS);
+                                                }
                                                 break;
                                             }
                                         }
-
-                                        // Save the updated baseline to baseline.json
-                                        BaselineManager.putInfoInBaseline(baseLineRecords);
-
-                                        // Update the backup with the newly modified file
-                                        BackupManager.updateBackup(
-                                                protectedFilePath,
-                                                backupFilePath,
-                                                approvedFiles);
-                                    } else {
-                                        // Unauthorized modification
-                                        status = "Unauthorized";
-
-                                        System.out.println("ALERT: Tampering detected on " + fileName
-                                                + ". Restoring from Backup...");
-
-                                        systemRestoredFiles.add(protectedFilePath);
-
-                                        // Restore the trusted backup copy
-                                        BackupManager.restoreBackup(protectedFilePath, backupFilePath);
-
-                                        scheduler.schedule(
-                                                () -> systemRestoredFiles.remove(protectedFilePath),
-                                                2,
-                                                TimeUnit.SECONDS);
                                     }
-
                                 } else if (kind == StandardWatchEventKinds.ENTRY_DELETE) {
 
                                     if (systemDeletedFiles.remove(protectedFilePath)) {
