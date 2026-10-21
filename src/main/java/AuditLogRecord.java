@@ -30,13 +30,13 @@ public class AuditLogRecord {
 
     // This function combines all log details into one string so we can calculate
     // its hash.
-    public String calculateHash() {
+    public String toRawString() {
         return timestamp.toString() + "|" + filePath + "|" + eventType + "|" + oldHash + "|" + newHash + "|"
                 + previousEntryHash;
     }
 
     // This function prepares 1 complete audit record to save in the log file.
     public String toLogLine() {
-        return calculateHash() + "|" + entryHash + "\n";
+        return toRawString() + "|" + entryHash + "\n";
     }
 }
