@@ -1,12 +1,5 @@
 import java.io.IOException;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardWatchEventKinds;
-import java.nio.file.WatchEvent;
-import java.nio.file.WatchKey;
-import java.nio.file.WatchService;
+import java.nio.file.*;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -125,6 +118,13 @@ public class FileWatcher {
                                         // 1. Calculate hash for new file
                                         String fileHash = IntegrityChecker.calculateHash(protectedFilePath);
 
+                                        // Adding the file creation log in log file.
+                                        AuditLogger.logEvent(
+                                                protectedFilePath.toString(),
+                                                "CREATE",
+                                                null,
+                                                fileHash);
+
                                         // 2. Add new record to in-memory baseline
                                         baseLineRecords.add(new FileRecord(protectedFilePath.toString(),
                                                 protectedFilePath.getFileName().toString(),
@@ -191,6 +191,14 @@ public class FileWatcher {
                                                 } else if (approvedFiles.contains(protectedFilePath)) {
 
                                                     status = "Authorized";
+
+                                                    // Adding the creation modification log in log file
+                                                    AuditLogger.logEvent(
+                                                            protectedFilePath.toString(),
+                                                            "MODIFY",
+                                                            oldHash,
+                                                            newHash);
+
                                                     record.hash = newHash;
                                                     BaselineManager.putInfoInBaseline(baseLineRecords);
                                                     BackupManager.updateBackup(protectedFilePath, backupFilePath,
@@ -224,6 +232,23 @@ public class FileWatcher {
                                         status = "Authorized";
 
                                         System.out.println("SUCCESS: Authorized file deleted: " + fileName);
+
+                                        String oldHash = null;
+
+                                        for (FileRecord record : baseLineRecords) {
+                                            if (Paths.get(record.filePath).toAbsolutePath().normalize()
+                                                    .equals(protectedFilePath)) {
+                                                oldHash = record.hash;
+                                                break;
+                                            }
+                                        }
+
+                                        // Creating a log in log file
+                                        AuditLogger.logEvent(
+                                                protectedFilePath.toString(),
+                                                "DELETE",
+                                                oldHash,
+                                                null);
 
                                         // Remove the file from the baseline
                                         baseLineRecords.removeIf(record -> Paths.get(record.filePath)
