@@ -179,6 +179,15 @@ public class Main {
         System.out.println();
         System.out.println();
 
+        // Verify the audit log before continuing.
+        if (AuditLogger.verifyAuditLog()) {
+            System.out.println("Audit log verification successful.");
+        } else {
+            System.out.println("WARNING: Audit log tampering detected!");
+            System.out.println("Application stopped for security reasons.");
+            return;
+        }
+
         // 1. To get the protected Folder
 
         Path path = FolderManager.selectFolderToProtect();
