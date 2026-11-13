@@ -1,92 +1,3 @@
-DELETE is handled incorrectly
-
-You call:
-IntegrityChecker.calculateHash(protectedFilePath);
-
-but the file has already been deleted, so hashing it will fail.
-
-Baseline JSON is not saved after updating the hash
-
-You do:
-record.hash = newHash;
-
-but this only changes the Java object in memory.
-
-You still need to write the updated baseline back to baseline.json.
-
-Backup path assumes every backup file is directly inside one folder
-
-backupFolderPath.resolve(protectedFilePath.getFileName())
-This can cause conflicts if two different subfolders contain files with the same name.
-
-Those are the main issues in this FileWatcher code.
-
-
-There are 2 important issues to keep in mind:
-
-Only top-level files are copied.
-DirectoryStream does not go inside subfolders. If your protected folder contains:
-
-Protected/
-  a.txt
-  Folder1/
-    b.txt
-
-only a.txt is backed up. b.txt is not.
-
-restoreBackup() approval handling is intentional, but the logic depends on FileWatcher correctly removing the approval after the restore event. We need to check that together with your watcher code.
-
-Other than that, these directions are correct:
-
-Protected → Backup
-
-for updateBackup()
-
-and
-
-Backup → Protected
-
-for restoreBackup().
-
-
-
-Step 6 — Live Integrity Verification
-Features:
-Whenever WatchService detects a change:
-•	Recalculate SHA-256 hash. 
-•	Compare with baseline. 
-•	Mark: 
-o	Authorized Change 
-o	Unauthorized Change 
-Goal:
-Verify every file change immediately.
-
-    // 3. Remove from approvedFiles
-    approvedFiles.remove(filepath);
-
-} else {
-    // UNAUTHORIZED: Restore tampered file from Backup
-    Path backupFilePath = backupFolder.resolve(filepath.getFileName());
-    try {
-        approvedFiles.add(filepath); // Prevent infinite loop during rollback write
-        Files.copy(backupFilePath, filepath, StandardCopyOption.REPLACE_EXISTING);
-        System.out.println("ALERT: Unauthorized edit detected! Restored from Backup.");
-    } catch (IOException e) {
-        approvedFiles.remove(filepath);
-        System.out.println("Failed to perform rollback: " + e.getMessage());
-    }
-}
-
-
-
-
-
-
-
-
-
-
-________________________________________
 Step 7 — Tamper-Evident Audit Log
 Features:
 Store:
@@ -97,13 +8,7 @@ Store:
 •	New hash 
 Also:
 Create hash chain between log entries.
-Use:
-•	FileChannel 
-•	ByteBuffer 
-•	Charset 
-•	FileLock while writing 
-Goal:
-Prevent audit log corruption.
+Goal: Prevent audit log corruption.
 ________________________________________
 Step 8 — Alert Generation
 Features:
