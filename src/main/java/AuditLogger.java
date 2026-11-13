@@ -3,18 +3,34 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.util.List;
 
 // The purpose of this class is to record file changes in a log file
 // and connect each record to the previous one using hashes.
 public class AuditLogger {
 
-    // Method to compute SHA-256 string hash
+    // Stores the location of the audit log file.
+    private static final Path LOG_FILE_PATH = Paths.get("audit_log.txt").toAbsolutePath().normalize();
+
+    // When the first log entry is created, there is no previous entry. Therefore,
+    // we use 64 zeros as the starting point of our hash chain.
+    private static String lastEntryHash = "0000000000000000000000000000000000000000000000000000000000000000";
+
+    // This static block runs automatically once when Java loads the AuditLogger
+    // class.
+    static {
+        loadLastEntryHash();
+    }
+
+    // 1. Method to compute SHA-256 string hash
+
     private static String computeSha256(String input) {
         try {
             // Selects the SHA-256 hashing algorithm.
@@ -41,14 +57,8 @@ public class AuditLogger {
         }
     }
 
-    // Stores the location of the audit log file.
-    private static final Path LOG_FILE_PATH = Paths.get("audit_log.txt").toAbsolutePath().normalize();
+    // 2. This method records a file-change event in our audit log file.
 
-    // When the first log entry is created, there is no previous entry. Therefore,
-    // we use 64 zeros as the starting point of our hash chain.
-    private static String lastEntryHash = "0000000000000000000000000000000000000000000000000000000000000000";
-
-    // This method records a file-change event in our audit log file.
     // synchronized allows only 1 thread at a time to execute this method.
     public static synchronized void logEvent(String filePath, String eventType, String oldHash, String newHash) {
 
@@ -60,9 +70,6 @@ public class AuditLogger {
 
         // 2. Compute SHA-256 hash of this entry
         record.entryHash = computeSha256(record.toRawString());
-
-        // 3. Stores that hash for the next log entry.
-        lastEntryHash = record.entryHash;
 
         // 4. We convert our audit log entry into bytes and put those bytes into a
         // buffer because FileChannel needs a ByteBuffer to write data into a file.
@@ -81,8 +88,43 @@ public class AuditLogger {
                     channel.write(buffer);
                 }
             }
+
+            // Update only after successful writing.
+            lastEntryHash = record.entryHash;
+
         } catch (IOException e) {
             System.err.println("CRITICAL: Failed to write to audit log: " + e.getMessage());
+        }
+    }
+
+    // 3. This method loads the hash of the last entry when the application starts.
+
+    private static void loadLastEntryHash() {
+
+        // If the log file does not exist, keep the initial 64 zeros.
+        if (!Files.exists(LOG_FILE_PATH)) {
+            return;
+        }
+        try {
+            // Read all lines from the existing audit log.
+            List<String> lines = Files.readAllLines(LOG_FILE_PATH, StandardCharsets.UTF_8);
+
+            // Check whether the log contains any entries.
+            if (!lines.isEmpty()) {
+
+                // Get the last entry.
+                String lastLine = lines.get(lines.size() - 1);
+
+                // Split the entry using the | separator.
+                String[] parts = lastLine.split("\\|", -1);
+
+                // The last field contains the entryHash.
+                if (parts.length == 7) {
+                    lastEntryHash = parts[6];
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Failed to load previous audit hash: " + e.getMessage());
         }
     }
 }
