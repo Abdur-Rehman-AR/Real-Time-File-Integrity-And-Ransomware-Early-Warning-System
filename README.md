@@ -1,25 +1,7 @@
-Step 7 — Tamper-Evident Audit Log
-Features:
-Store:
-•	Timestamp 
-•	File path 
-•	Event 
-•	Old hash 
-•	New hash 
-Also:
-Create hash chain between log entries.
-Goal: Prevent audit log corruption.
-________________________________________
 Step 8 — Alert Generation
 Features:
-Whenever unauthorized activity occurs:
-•	Console warning 
-•	alerts.log 
-Future:
-•	Email 
-•	Desktop notification 
-Goal:
-Immediately inform administrators.
+Whenever unauthorized activity occurs: alerts.log 
+Goal: Immediately inform administrators.
 ________________________________________
 Step 9 — Ransomware Detection Engine
 Features:
