@@ -127,4 +127,43 @@ public class AuditLogger {
             System.err.println("Failed to load previous audit hash: " + e.getMessage());
         }
     }
+
+    // 4. Method that checks whether existing log entries have been changed or
+    // tampered with.
+
+    public static boolean verifyAuditLog() {
+        try {
+            // If log file is not present then it means nothing got temperd.
+            if (!Files.exists(LOG_FILE_PATH)) {
+                return true;
+            }
+
+            // Reading the whole file and placing all lines in lines list
+            List<String> lines = Files.readAllLines(LOG_FILE_PATH, StandardCharsets.UTF_8);
+            String previousHash = "0000000000000000000000000000000000000000000000000000000000000000";
+
+            // Loop to iterate over each line of the audit log file to check either it is
+            // correctly chained
+            for (String line : lines) {
+                String[] parts = line.split("\\|", -1);
+
+                if (parts.length != 7 || !parts[5].equals(previousHash)) {
+                    return false;
+                }
+
+                String join = String.join("|", parts[0], parts[1], parts[2], parts[3], parts[4], parts[5]);
+
+                String calculatedHash = computeSha256(join);
+
+                if (!calculatedHash.equals(parts[6])) {
+                    return false;
+                }
+                previousHash = parts[6];
+            }
+            return true;
+        } catch (IOException e) {
+            System.err.println("Audit log verification failed: " + e.getMessage());
+            return false;
+        }
+    }
 }
