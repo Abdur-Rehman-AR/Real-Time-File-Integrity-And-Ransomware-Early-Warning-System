@@ -1,10 +1,3 @@
-Step 9 — Ransomware Detection Engine
-Features:
-Detect:
-•	Many files renamed quickly. 
-•	Suspicious extensions. 
-Goal: Identify ransomware-like behavior early.
-________________________________________
 Step 10 — Backup and Auto-Response
 First:
 •	Automatically back up affected files. 
