@@ -6,39 +6,40 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 
+// This class displays unauthorized activity warnings in the console.
+// Saving alerts to alerts.log.
 public class AlertManager {
 
-    // Location of the alert file.
-    private static final Path ALERT_FILE_PATH =
-            Paths.get("alerts.log").toAbsolutePath().normalize();
+        // Location of the alert file.
+        private static final Path alertFilePath = Paths.get("alerts.log").toAbsolutePath().normalize();
 
-    // Generate an alert for unauthorized activity.
-    public static synchronized void generateAlert(
-            String eventType, Path filePath, String action) {
+        // This method generates an alert for unauthorized activity.
+        // synchronized means only 1 thread can execute this method at a time.
+        public static synchronized void generateAlert(String eventType, Path filePath, String action) {
 
-        String timestamp = LocalDateTime.now().toString();
+                // Stores the current date and time in timestamp variable
+                String timestamp = LocalDateTime.now().toString();
 
-        String alertMessage =
-                "[" + timestamp + "] UNAUTHORIZED " + eventType
-                + " | File: " + filePath
-                + " | Action: " + action;
+                // Making of the alert message
+                String alertMessage = "[" + timestamp + "] UNAUTHORIZED " + eventType
+                                + " | File: " + filePath + " | Action: " + action;
 
-        // Display warning in the console.
-        System.out.println("ALERT: " + alertMessage);
+                // Display warning in the console.
+                System.out.println("ALERT: " + alertMessage);
 
-        // Save the alert in alerts.log.
-        try {
-            Files.writeString(
-                    ALERT_FILE_PATH,
-                    alertMessage + System.lineSeparator(),
-                    StandardCharsets.UTF_8,
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.APPEND
-            );
+                // Save the alert in alerts.log.
+                try {
+                        Files.writeString(
+                                        alertFilePath,
+                                        // Writes the alert message and then moves to a new line, so the next alert
+                                        // appears on a separate line.
+                                        alertMessage + System.lineSeparator(),
+                                        StandardCharsets.UTF_8,
+                                        StandardOpenOption.CREATE,
+                                        StandardOpenOption.APPEND);
 
-        } catch (IOException e) {
-            System.out.println(
-                    "Failed to save alert: " + e.getMessage());
+                } catch (IOException e) {
+                        System.out.println("Failed to save alert: " + e.getMessage());
+                }
         }
-    }
 }
