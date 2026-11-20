@@ -1,8 +1,6 @@
 Step 9 — Ransomware Detection Engine
 Features:
 Detect:
-•	Many files modified in a short time. 
-•	Many files deleted quickly. 
 •	Many files renamed quickly. 
 •	Suspicious extensions. 
 Goal: Identify ransomware-like behavior early.
