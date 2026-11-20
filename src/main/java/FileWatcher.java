@@ -139,8 +139,9 @@ public class FileWatcher {
 
                                     } else {
                                         status = "Unauthorized Creation";
-                                        System.out.println("ALERT: Unauthorized file creation detected: " + fileName
-                                                + ". Deleting file...");
+
+                                        // Generating and saving the alert in alert.log file
+                                        AlertManager.generateAlert("CREATE", protectedFilePath, "Deleting unauthorized file");
 
                                         try {
                                             // Adding the file in list, so that delete event can know it is intentional
@@ -205,8 +206,9 @@ public class FileWatcher {
                                                             approvedFiles);
                                                 } else {
                                                     status = "Unauthorized";
-                                                    System.out.println("ALERT: Tampering detected on " + fileName
-                                                            + ". Restoring from Backup...");
+
+                                                    // Generating and saving the alert in alert.log file
+                                                    AlertManager.generateAlert("MODIFY", protectedFilePath, "Restoring from Backup...");
                                                     systemRestoredFiles.add(protectedFilePath);
                                                     BackupManager.restoreBackup(protectedFilePath, backupFilePath);
 
@@ -223,8 +225,7 @@ public class FileWatcher {
 
                                     if (systemDeletedFiles.remove(protectedFilePath)) {
                                         status = "System Cleanup";
-                                        System.out
-                                                .println("Ignoring DELETE event caused by system cleanup: " + fileName);
+                                        System.out.println("Ignoring DELETE event caused by system cleanup: " + fileName);
                                     }
                                     // Authorized deletion
                                     else if (approvedFiles.contains(protectedFilePath)) {
@@ -272,8 +273,8 @@ public class FileWatcher {
                                         // Unauthorized deletion
                                         status = "Unauthorized";
 
-                                        System.out.println("ALERT: Unauthorized deletion detected on " + fileName
-                                                + ". Restoring from Backup...");
+                                        // Generating and saving the alert in alert.log file
+                                        AlertManager.generateAlert("DELETE", protectedFilePath, "Restoring from Backup...");
                                         // Adding file so that create event can see this creation is done by system
                                         // itself
                                         systemRestoredFiles.add(protectedFilePath);
