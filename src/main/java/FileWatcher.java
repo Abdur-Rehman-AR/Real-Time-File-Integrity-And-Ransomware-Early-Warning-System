@@ -140,8 +140,19 @@ public class FileWatcher {
                                     } else {
                                         status = "Unauthorized Creation";
 
+                                        // --- RANSOMWARE CHECKS ---
+                                        if (RansomwareDetector.hasSuspiciousExtension(protectedFilePath)) {
+                                            AlertManager.generateAlert("RANSOMWARE", protectedFilePath,
+                                                    "Suspicious ransomware extension detected!");
+                                        }
+                                        if (RansomwareDetector.recordCreation()) {
+                                            AlertManager.generateAlert("RANSOMWARE", protectedFilePath,
+                                                    "Rapid file renames detected!");
+                                        }
+
                                         // Generating and saving the alert in alert.log file
-                                        AlertManager.generateAlert("CREATE", protectedFilePath, "Deleting unauthorized file");
+                                        AlertManager.generateAlert("CREATE", protectedFilePath,
+                                                "Deleting unauthorized file");
 
                                         try {
                                             // Adding the file in list, so that delete event can know it is intentional
@@ -189,7 +200,7 @@ public class FileWatcher {
                                                     status = "No Content Change";
                                                     System.out.println("File content is unchanged: " + fileName);
 
-                                                } else if (approvedFiles.contains(protectedFilePath)) {
+                                                } else {
 
                                                     status = "Authorized";
 
@@ -204,28 +215,40 @@ public class FileWatcher {
                                                     BaselineManager.putInfoInBaseline(baseLineRecords);
                                                     BackupManager.updateBackup(protectedFilePath, backupFilePath,
                                                             approvedFiles);
-                                                } else {
-                                                    status = "Unauthorized";
-
-                                                    // Generating and saving the alert in alert.log file
-                                                    AlertManager.generateAlert("MODIFY", protectedFilePath, "Restoring from Backup...");
-                                                    systemRestoredFiles.add(protectedFilePath);
-                                                    BackupManager.restoreBackup(protectedFilePath, backupFilePath);
-
-                                                    scheduler.schedule(
-                                                            () -> systemRestoredFiles.remove(protectedFilePath),
-                                                            2,
-                                                            TimeUnit.SECONDS);
                                                 }
                                                 break;
                                             }
                                         }
+                                    } else {
+                                        status = "Unauthorized";
+
+                                        // --- RANSOMWARE CHECKS ---
+                                        if (RansomwareDetector.hasSuspiciousExtension(protectedFilePath)) {
+                                            AlertManager.generateAlert("RANSOMWARE", protectedFilePath,
+                                                    "Suspicious ransomware extension detected!");
+                                        }
+                                        if (RansomwareDetector.recordModification()) {
+                                            AlertManager.generateAlert("RANSOMWARE", protectedFilePath,
+                                                    "Rapid file modifications detected!");
+                                        }
+
+                                        // Generating and saving the alert in alert.log file
+                                        AlertManager.generateAlert("MODIFY", protectedFilePath,
+                                                "Restoring from Backup...");
+                                        systemRestoredFiles.add(protectedFilePath);
+                                        BackupManager.restoreBackup(protectedFilePath, backupFilePath);
+
+                                        scheduler.schedule(
+                                                () -> systemRestoredFiles.remove(protectedFilePath),
+                                                2,
+                                                TimeUnit.SECONDS);
                                     }
                                 } else if (kind == StandardWatchEventKinds.ENTRY_DELETE) {
 
                                     if (systemDeletedFiles.remove(protectedFilePath)) {
                                         status = "System Cleanup";
-                                        System.out.println("Ignoring DELETE event caused by system cleanup: " + fileName);
+                                        System.out
+                                                .println("Ignoring DELETE event caused by system cleanup: " + fileName);
                                     }
                                     // Authorized deletion
                                     else if (approvedFiles.contains(protectedFilePath)) {
@@ -273,8 +296,15 @@ public class FileWatcher {
                                         // Unauthorized deletion
                                         status = "Unauthorized";
 
+                                        // --- RANSOMWARE CHECK ---
+                                        if (RansomwareDetector.recordDeletion()) {
+                                            AlertManager.generateAlert("RANSOMWARE", protectedFilePath,
+                                                    "Rapid file deletions detected!");
+                                        }
+
                                         // Generating and saving the alert in alert.log file
-                                        AlertManager.generateAlert("DELETE", protectedFilePath, "Restoring from Backup...");
+                                        AlertManager.generateAlert("DELETE", protectedFilePath,
+                                                "Restoring from Backup...");
                                         // Adding file so that create event can see this creation is done by system
                                         // itself
                                         systemRestoredFiles.add(protectedFilePath);
