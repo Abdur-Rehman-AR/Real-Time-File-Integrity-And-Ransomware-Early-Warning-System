@@ -13,16 +13,14 @@ public class RansomwareDetector {
      * ransomware detection engine will check.
      * Set.of() creates a fixed and unmodifiable set of extensions.
      */
-    private static final Set<String> suspiciousExtentions = Set.of(".locked", ".crypt", ".crypto", ".enc", ".encrypted",
+    private static final Set<String> SUSPICIOUS_EXTENSIONS = Set.of(".locked", ".crypt", ".crypto", ".enc", ".encrypted",
             ".wannacry", ".wcry", ".ryk", ".lockbit", ".cerber", ".zepto");
 
     // --- Configuration Thresholds ---
     // 5-second sliding window
     private static final Duration TIME_WINDOW = Duration.ofSeconds(5);
     // Max allowed modifications in 5s
-    private static final int MODIFICATION_THRESHOLD = 10;
-    // Max allowed deletions in 5s
-    private static final int DELETION_THRESHOLD = 10;
+    private static final int THRESHOLD = 10;
 
     // It creates an empty, thread-safe collection to store file modification
     // timestamps, so our ransomware detector can track how many files are modified
@@ -32,7 +30,16 @@ public class RansomwareDetector {
     // Stores timestamps of recent file deletions to detect rapid mass deletion
     private static final Deque<Instant> deletionTimestamps = new ConcurrentLinkedDeque<>();
 
+    // Maximum gap (500ms) between a DELETE and CREATE to consider it a file rename
+    private static final Duration RENAME_PAIR_WINDOW = Duration.ofMillis(500);
+    // Stores timestamps of detected file renames
+    private static final Deque<Instant> renameTimestamps = new ConcurrentLinkedDeque<>();
+    // This creates a shared variable that stores the time of the latest file
+    // deletion. volatile helps different threads see its latest value.
+    private static volatile Instant lastDeletionTime = null;
+
     // 1. This method checks either the file has a suspicious extention or not
+
     public static boolean hasSuspiciousExtension(Path filePath) {
 
         // checks if file does not exists
@@ -45,7 +52,7 @@ public class RansomwareDetector {
 
         // loop that iterate over each suspiciousExtentions to match it with selected
         // file extension
-        for (String ext : suspiciousExtentions) {
+        for (String ext : SUSPICIOUS_EXTENSIONS) {
             if (fileName.endsWith(ext)) {
                 System.err.println("RANSOMWARE ALERT [Suspicious Extension]: " + fileName + " matched '" + ext + "'");
                 return true;
@@ -86,12 +93,30 @@ public class RansomwareDetector {
     // 2. This method detects whether too many files modifications happen within 5
     // seconds, which may indicate ransomware activity.
     public static boolean recordModification() {
-        return checkRateLimit(modificationTimestamps, MODIFICATION_THRESHOLD, "Rapid Modifications");
+        return checkRateLimit(modificationTimestamps, THRESHOLD, "Rapid Modifications");
     }
 
     // 3. This method detects whether too many file deletions happen within 5
     // seconds, which may indicate ransomware wiping original files.
     public static boolean recordDeletion() {
-        return checkRateLimit(deletionTimestamps, DELETION_THRESHOLD, "Rapid Deletions");
+        // the below line is used to check that if a creation happens after it before
+        // 500ms then it is rename event
+        lastDeletionTime = Instant.now();
+
+        return checkRateLimit(deletionTimestamps, THRESHOLD, "Rapid Deletions");
+    }
+
+    // 4. This method detects rapid file renames by pairing an ENTRY_CREATE
+    // immediately following an ENTRY_DELETE
+    public static boolean recordCreation() {
+        Instant now = Instant.now();
+        Instant recentDelete = lastDeletionTime;
+
+        // Check if rename happen within 500ms then check if it is ransomware
+        if (recentDelete != null && Duration.between(recentDelete, now).compareTo(RENAME_PAIR_WINDOW) <= 0) {
+            lastDeletionTime = null;
+            return checkRateLimit(renameTimestamps, THRESHOLD, "Rapid Renames");
+        }
+        return false;
     }
 }
