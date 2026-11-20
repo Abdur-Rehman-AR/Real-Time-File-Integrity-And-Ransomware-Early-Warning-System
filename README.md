@@ -1,8 +1,3 @@
-Step 8 — Alert Generation
-Features:
-Whenever unauthorized activity occurs: alerts.log 
-Goal: Immediately inform administrators.
-________________________________________
 Step 9 — Ransomware Detection Engine
 Features:
 Detect:
@@ -10,8 +5,7 @@ Detect:
 •	Many files deleted quickly. 
 •	Many files renamed quickly. 
 •	Suspicious extensions. 
-Goal:
-Identify ransomware-like behavior early.
+Goal: Identify ransomware-like behavior early.
 ________________________________________
 Step 10 — Backup and Auto-Response
 First:
